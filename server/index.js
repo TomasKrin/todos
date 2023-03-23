@@ -1,32 +1,46 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
+const { MongoClient } = require("mongodb");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+const URI = process.env.URI;
+
+const client = new MongoClient(URI);
 
 // (127.0.0.1:8080) yra atmaina (localhost:8080)
 
-const port = 8080;
 app.use(cors());
 app.use(express.json());
 
-const todos = [
-  {
-    id: 1,
-    title: "Gerai pailsėti",
-  },
-];
-
 app.get("/", async (req, res) => {
-  res.send(todos);
+  try {
+    const con = await client.connect();
+    const data = await con.db("TODOS").collection("todos").find().toArray();
+    await con.close();
+    res.send(data);
+  } catch (error) {
+    res.status(500).send({ error });
+  }
 });
 
 app.post("/", async (req, res) => {
-  // {title: 'Do Homework'} => {id: 5123, title: 'Do Homework'}
-  const newTodo = { id: Date.now(), ...req.body };
-  todos.push(newTodo);
-  res.send(newTodo);
+  try {
+    if (req.body.title) {
+      const con = await client.connect();
+      const data = await con.db("TODOS").collection("todos").insertOne({
+        title: req.body.title,
+      });
+      await con.close();
+      res.send(data);
+    }
+  } catch (error) {
+    res.status(500).send({ error });
+  }
 });
 
-app.listen(port, () => {
-  console.log(`It works on ${port} port`);
+app.listen(PORT, () => {
+  console.log(`It works on ${PORT} port`);
 });
